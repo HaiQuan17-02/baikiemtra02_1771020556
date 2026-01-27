@@ -1,0 +1,6 @@
+@PikApi_HostAddress = http://localhost:5054
+
+GET {{PikApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
