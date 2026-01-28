@@ -1,11 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import '../providers/wallet_provider.dart';
+import '../providers/tournament_provider.dart';
 import '../theme/app_theme.dart';
 import 'booking/booking_screen.dart';
 import 'tournament/tournament_list_screen.dart';
+import 'match/find_match_screen.dart';
+import 'profile/profile_screen.dart';
+import 'admin/stats_screen.dart';
+import 'admin/court_management_screen.dart';
+import 'admin/approve_deposit_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,13 +23,42 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
 
+  late PageController _pageController;
+  Timer? _timer;
+  int _currentPage = 0;
+
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: 0);
+    _startTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<WalletProvider>().loadBalance();
-      context.read<WalletProvider>().loadTransactions();
+      context.read<TournamentProvider>().loadTournaments();
     });
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_currentPage < 2) {
+        _currentPage++;
+      } else {
+        _currentPage = 0;
+      }
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(
+          _currentPage,
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeInOutBack,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
   }
 
   String _getGreeting() {
@@ -36,11 +71,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final wallet = context.watch<WalletProvider>();
 
-    return Scaffold(
-      backgroundColor: AppTheme.primaryDark,
-      body: SafeArea(
+    return SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -50,19 +82,47 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      Text(_getGreeting(), style: TextStyle(color: AppTheme.textMuted, fontSize: 14)),
-                      const SizedBox(height: 4),
-                      Text('Xin chào, ${auth.user?.fullName ?? 'Bạn'}!',
-                        style: const TextStyle(color: AppTheme.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                      Builder(
+                        builder: (context) => GestureDetector(
+                          onTap: () => Scaffold.of(context).openDrawer(),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceLight,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.menu, color: AppTheme.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(_getGreeting(), style: TextStyle(color: AppTheme.textMuted, fontSize: 13)),
+                          const SizedBox(height: 2),
+                          Text('Xin chào, ${auth.user?.fullName.split(' ').last ?? 'Bạn'}!',
+                            style: const TextStyle(color: AppTheme.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                     ],
                   ),
-                  CircleAvatar(
-                    backgroundColor: AppTheme.surfaceLight,
-                    radius: 24,
-                    child: Icon(Icons.person, color: AppTheme.white),
+                  GestureDetector(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen())),
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.accentGreen.withOpacity(0.5), width: 2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: CircleAvatar(
+                        backgroundColor: AppTheme.surfaceLight,
+                        radius: 20,
+                        child: const Icon(Icons.person, color: AppTheme.white, size: 20),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -96,54 +156,42 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 28),
 
-              // Wallet Card
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppTheme.accentGreen, AppTheme.primaryGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(color: AppTheme.accentGreen.withOpacity(0.3), blurRadius: 20, offset: Offset(0, 10)),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              // News & Promotion Carousel
+              SizedBox(
+                height: 180,
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: (index) => setState(() => _currentPage = index),
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Số dư ví', style: TextStyle(color: AppTheme.white.withOpacity(0.8), fontSize: 14)),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppTheme.gold,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(wallet.tier, style: TextStyle(color: AppTheme.primaryDark, fontWeight: FontWeight.bold, fontSize: 12)),
-                        ),
-                      ],
+                    _buildCarouselItem(
+                      'assets/banners/promo1.png',
+                      'KHUYẾN MÃI 20%',
+                      'Đặt sân vào khung giờ vàng sáng sớm để nhận ưu đãi hấp dẫn.',
+                      Colors.orange,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      currencyFormat.format(wallet.balanceAmount),
-                      style: const TextStyle(color: AppTheme.white, fontSize: 32, fontWeight: FontWeight.bold),
+                    _buildCarouselItem(
+                      'assets/banners/tournament1.png',
+                      'GIẢI ĐẤU QUỐC GIA',
+                      'Giải Pickleball Toàn quốc 2026 chính thức mở đăng ký!',
+                      AppTheme.gold,
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        _buildWalletAction(Icons.add_circle_outline, 'Nạp tiền', () => _showDepositDialog(context)),
-                        const SizedBox(width: 16),
-                        _buildWalletAction(Icons.history, 'Lịch sử', () {}),
-                      ],
-                    ),
+                    _buildTournamentPromo(context),
                   ],
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(3, (index) => Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: _currentPage == index ? 20 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: _currentPage == index ? AppTheme.accentGreen : AppTheme.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                )),
+              ),
 
               // Quick Actions
               Text('Dịch vụ', style: TextStyle(color: AppTheme.white, fontSize: 18, fontWeight: FontWeight.bold)),
@@ -158,10 +206,41 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const TournamentListScreen()));
                   }),
                   _buildQuickAction(Icons.leaderboard, 'Bảng xếp hạng', () {}),
-                  _buildQuickAction(Icons.group, 'Tìm đối', () {}),
+                  _buildQuickAction(Icons.group, 'Tìm đối', () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const FindMatchScreen()));
+                  }),
                 ],
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 32),
+
+              // Admin Quick Actions
+              if (auth.isAdmin) ...[
+                Text('Quản lý hệ thống', style: TextStyle(color: AppTheme.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppTheme.accentGreen.withOpacity(0.1)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildQuickAction(Icons.bar_chart, 'Thống kê', () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const StatsScreen()));
+                      }),
+                      _buildQuickAction(Icons.settings, 'Các Sân', () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const CourtManagementScreen()));
+                      }),
+                      _buildQuickAction(Icons.account_balance_wallet, 'Duyệt nạp', () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ApproveDepositScreen()));
+                      }),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
 
               // Featured Courts
               Row(
@@ -189,24 +268,103 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+      );
+    }
+
+  Widget _buildCarouselItem(String imagePath, String title, String subtitle, Color accentColor) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        image: DecorationImage(
+          image: AssetImage(imagePath),
+          fit: BoxFit.cover,
+          colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.3), BlendMode.darken),
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(
+            begin: Alignment.bottomRight,
+            colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 8),
+            Text(subtitle, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildWalletAction(IconData icon, String label, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppTheme.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(20),
+  Widget _buildTournamentPromo(BuildContext context) {
+    final tournamentProvider = context.watch<TournamentProvider>();
+    final upcoming = tournamentProvider.tournaments.isNotEmpty ? tournamentProvider.tournaments.first : null;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: [AppTheme.primaryGreen, AppTheme.primaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: Row(
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: AppTheme.white, size: 18),
-            SizedBox(width: 6),
-            Text(label, style: TextStyle(color: AppTheme.white, fontWeight: FontWeight.w500)),
+            Row(
+              children: [
+                const Icon(Icons.emoji_events, color: AppTheme.gold, size: 28),
+                const SizedBox(width: 10),
+                Text('GIẢI ĐẤU SẮP TỚI', style: TextStyle(color: AppTheme.gold, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              upcoming != null ? upcoming.name : 'Chưa có giải đấu mới',
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              upcoming != null 
+                ? 'Khai mạc: ${DateFormat('dd/MM/yyyy').format(upcoming.startDate)}'
+                : 'Hãy theo dõi thường xuyên để cập nhật!',
+              style: TextStyle(color: AppTheme.white.withOpacity(0.7), fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const TournamentListScreen()));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.accentGreen,
+                minimumSize: const Size(100, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Xem chi tiết', style: TextStyle(fontSize: 12)),
+            ),
           ],
         ),
       ),
@@ -272,51 +430,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showDepositDialog(BuildContext context) {
-    final amountController = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppTheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => Padding(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Nạp tiền vào ví', style: TextStyle(color: AppTheme.white, fontSize: 20, fontWeight: FontWeight.bold)),
-            SizedBox(height: 20),
-            TextField(
-              controller: amountController,
-              keyboardType: TextInputType.number,
-              style: TextStyle(color: AppTheme.white),
-              decoration: InputDecoration(
-                labelText: 'Số tiền',
-                labelStyle: TextStyle(color: AppTheme.textMuted),
-                prefixIcon: Icon(Icons.attach_money, color: AppTheme.accentGreen),
-              ),
-            ),
-            SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () async {
-                  final amount = double.tryParse(amountController.text) ?? 0;
-                  if (amount > 0) {
-                    await context.read<WalletProvider>().deposit(amount, '');
-                    Navigator.pop(context);
-                  }
-                },
-                child: Text('Gửi yêu cầu nạp tiền'),
-              ),
-            ),
-            SizedBox(height: 16),
-          ],
-        ),
       ),
     );
   }

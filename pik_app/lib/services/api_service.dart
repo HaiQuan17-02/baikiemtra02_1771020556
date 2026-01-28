@@ -88,10 +88,30 @@ class ApiService {
     return await _dio.put('/wallet/approve/$transactionId');
   }
 
+  Future<AdminStats?> getAdminStats() async {
+    try {
+      final response = await _dio.get('/wallet/admin/stats');
+      return AdminStats.fromJson(response.data);
+    } catch (e) {
+      print('Get Admin Stats Error: $e');
+      return null;
+    }
+  }
+
   // ========== Booking ==========
 
   Future<Response> getCourts() async {
     return await _dio.get('/booking/courts');
+  }
+
+  Future<Response> getAdminCourts() async {
+    // We can use the same endpoint if we modify it to return all for admin, 
+    // or create a new one. Let's create a specific one for clarity.
+    return await _dio.get('/booking/admin/courts');
+  }
+
+  Future<Response> toggleCourtStatus(int courtId) async {
+    return await _dio.put('/booking/courts/$courtId/toggle');
   }
 
   Future<Response> getCalendar(DateTime from, DateTime to) async {
@@ -193,6 +213,88 @@ class ApiService {
     } catch (e) {
       print('Update Match Result Error: $e');
       return false;
+    }
+  }
+
+  // ========== Match Request ==========
+
+  Future<List<MatchRequest>> getMatchRequests() async {
+    try {
+      final response = await _dio.get('/matchrequest');
+      return (response.data as List).map((i) => MatchRequest.fromJson(i)).toList();
+    } catch (e) {
+      print('Get Match Requests Error: $e');
+      return [];
+    }
+  }
+
+  Future<MatchRequestDetail?> getMatchRequestDetail(int id) async {
+    try {
+      final response = await _dio.get('/matchrequest/$id');
+      return MatchRequestDetail.fromJson(response.data);
+    } catch (e) {
+      print('Get Match Request Detail Error: $e');
+      return null;
+    }
+  }
+
+  Future<bool> createMatchRequest(Map<String, dynamic> data) async {
+    try {
+      await _dio.post('/matchrequest', data: data);
+      return true;
+    } catch (e) {
+      print('Create Match Request Error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> joinMatchRequest(int id) async {
+    try {
+      await _dio.post('/matchrequest/join/$id');
+      return true;
+    } catch (e) {
+      print('Join Match Request Error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> leaveMatchRequest(int id) async {
+    try {
+      await _dio.post('/matchrequest/leave/$id');
+      return true;
+    } catch (e) {
+      print('Leave Match Request Error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteMatchRequest(int id) async {
+    try {
+      await _dio.delete('/matchrequest/$id');
+      return true;
+    } catch (e) {
+      print('Delete Match Request Error: $e');
+      return false;
+    }
+  }
+
+  Future<List<MatchRequest>> getMyMatchRequests() async {
+    try {
+      final response = await _dio.get('/matchrequest/my-requests');
+      return (response.data as List).map((i) => MatchRequest.fromJson(i)).toList();
+    } catch (e) {
+      print('Get My Match Requests Error: $e');
+      return [];
+    }
+  }
+
+  Future<List<MatchRequest>> getMyJoinedMatches() async {
+    try {
+      final response = await _dio.get('/matchrequest/my-joined');
+      return (response.data as List).map((i) => MatchRequest.fromJson(i)).toList();
+    } catch (e) {
+      print('Get My Joined Matches Error: $e');
+      return [];
     }
   }
 }

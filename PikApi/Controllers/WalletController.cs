@@ -97,12 +97,12 @@ namespace PikApi.Controllers
             if (member == null)
                 return NotFound("Không tìm thấy thông tin thành viên");
 
-            // Validate base64 image
-            if (string.IsNullOrEmpty(request.ProofImageBase64))
-                return BadRequest("Vui lòng cung cấp ảnh chứng minh chuyển khoản");
-
-            // Lưu ảnh bằng chứng (trong thực tế sẽ lưu vào storage)
-            var imagePath = await SaveProofImage(request.ProofImageBase64, member.Id);
+            // Process proof image if provided
+            string? imagePath = null;
+            if (!string.IsNullOrEmpty(request.ProofImageBase64))
+            {
+                imagePath = await SaveProofImage(request.ProofImageBase64, member.Id);
+            }
 
             // Tạo giao dịch nạp tiền với trạng thái Pending
             var transaction = new WalletTransaction
@@ -111,7 +111,7 @@ namespace PikApi.Controllers
                 Amount = request.Amount,
                 Type = TransactionType.Deposit,
                 Status = TransactionStatus.Pending,
-                Description = request.Description ?? $"Yêu cầu nạp tiền - Ảnh: {imagePath}",
+                Description = request.Description ?? (imagePath != null ? $"Yêu cầu nạp tiền - Ảnh: {imagePath}" : "Yêu cầu nạp tiền"),
                 CreatedDate = DateTime.UtcNow
             };
 
@@ -192,6 +192,80 @@ namespace PikApi.Controllers
                 await dbTransaction.RollbackAsync();
                 throw;
             }
+        }
+
+        /// <summary>
+        /// GET /api/wallet/admin/stats
+        /// (Admin) Lấy thống kê doanh thu và số lượng member
+        /// </summary>
+        [HttpGet("admin/stats")]
+        [Authorize(Roles = "Admin,Treasurer")]
+        public async Task<ActionResult<AdminStatsResponse>> GetStats()
+        {
+            var today = DateTime.UtcNow.Date;
+            var sevenDaysAgo = today.AddDays(-6);
+
+            // 1. Tổng member
+            var totalMembers = await _context.Members.CountAsync();
+
+            // 2. Tổng doanh thu booking (tính các booking Confirmed/Completed)
+            var bookings = await _context.Bookings
+                .Where(b => b.Status != BookingStatus.Cancelled)
+                .ToListAsync();
+            
+            var totalBookingRevenue = bookings.Sum(b => b.TotalPrice);
+            var totalBookings = bookings.Count;
+
+            // 3. Tổng dòng tiền nạp (tính các giao dịch Deposit/Completed)
+            var totalDepositCashflow = await _context.WalletTransactions
+                .Where(t => t.Type == TransactionType.Deposit && t.Status == TransactionStatus.Completed)
+                .SumAsync(t => t.Amount);
+
+            // 4. Thống kê theo ngày (7 ngày gần nhất)
+            var dailyStats = new List<DailyStatsDto>();
+            for (int i = 0; i < 7; i++)
+            {
+                var date = sevenDaysAgo.AddDays(i);
+                var nextDate = date.AddDays(1);
+
+                var dayBookings = bookings.Where(b => b.StartTime >= date && b.StartTime < nextDate).ToList();
+                var dayDeposits = await _context.WalletTransactions
+                    .Where(t => t.Type == TransactionType.Deposit && 
+                               t.Status == TransactionStatus.Completed &&
+                               t.CreatedDate >= date && t.CreatedDate < nextDate)
+                    .SumAsync(t => t.Amount);
+
+                dailyStats.Add(new DailyStatsDto
+                {
+                    Date = date,
+                    BookingRevenue = dayBookings.Sum(b => b.TotalPrice),
+                    DepositCashflow = dayDeposits
+                });
+            }
+
+            // 5. Thống kê theo sân
+            var courtStats = bookings
+                .Where(b => b.Court != null)
+                .GroupBy(b => new { b.CourtId, b.Court!.Name })
+                .Select(g => new CourtStatsDto
+                {
+                    CourtId = g.Key.CourtId,
+                    CourtName = g.Key.Name,
+                    Revenue = g.Sum(b => b.TotalPrice),
+                    BookingCount = g.Count()
+                })
+                .OrderByDescending(c => c.Revenue)
+                .ToList();
+
+            return Ok(new AdminStatsResponse
+            {
+                TotalBookingRevenue = totalBookingRevenue,
+                TotalDepositCashflow = totalDepositCashflow,
+                TotalMembers = totalMembers,
+                TotalBookings = totalBookings,
+                DailyStats = dailyStats,
+                CourtStats = courtStats
+            });
         }
 
         /// <summary>

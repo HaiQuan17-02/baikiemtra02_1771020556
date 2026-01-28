@@ -80,6 +80,7 @@ namespace PikApi.Controllers
                     FullName = member?.FullName ?? "",
                     MemberId = member?.Id,
                     WalletBalance = member?.WalletBalance ?? 0,
+                    RankLevel = member?.RankLevel ?? 3.5,
                     Tier = member?.Tier.ToString() ?? "Standard",
                     Roles = roles.ToList()
                 }
@@ -156,6 +157,7 @@ namespace PikApi.Controllers
                     FullName = member.FullName,
                     MemberId = member.Id,
                     WalletBalance = member.WalletBalance,
+                    RankLevel = member.RankLevel,
                     Tier = member.Tier.ToString(),
                     Roles = roles.ToList()
                 }
@@ -185,6 +187,7 @@ namespace PikApi.Controllers
                 FullName = member?.FullName ?? "",
                 MemberId = member?.Id,
                 WalletBalance = member?.WalletBalance ?? 0,
+                RankLevel = member?.RankLevel ?? 3.5,
                 Tier = member?.Tier.ToString() ?? "Standard",
                 Roles = roles.ToList()
             });

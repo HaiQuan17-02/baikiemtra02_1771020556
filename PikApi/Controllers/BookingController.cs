@@ -342,5 +342,45 @@ namespace PikApi.Controllers
 
             return Ok(bookings);
         }
+
+        /// <summary>
+        /// GET /api/booking/admin/courts
+        /// Admin lấy danh sách tất cả sân (kể cả sân bị tắt)
+        /// </summary>
+        [HttpGet("admin/courts")]
+        [Authorize(Roles = "Admin,Treasurer")]
+        public async Task<ActionResult<List<object>>> GetAdminCourts()
+        {
+            var courts = await _context.Courts
+                .Select(c => new
+                {
+                    c.Id,
+                    c.Name,
+                    c.PricePerHour,
+                    c.Description,
+                    c.IsActive
+                })
+                .ToListAsync();
+
+            return Ok(courts);
+        }
+
+        /// <summary>
+        /// PUT /api/booking/courts/{id}/toggle
+        /// Admin bật/tắt trạng thái hoạt động của sân
+        /// </summary>
+        [HttpPut("courts/{id}/toggle")]
+        [Authorize(Roles = "Admin,Treasurer")]
+        public async Task<ActionResult> ToggleCourtStatus(int id)
+        {
+            var court = await _context.Courts.FindAsync(id);
+            if (court == null)
+                return NotFound("Không tìm thấy sân");
+
+            court.IsActive = !court.IsActive;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { id = court.Id, isActive = court.IsActive, name = court.Name });
+        }
     }
 }

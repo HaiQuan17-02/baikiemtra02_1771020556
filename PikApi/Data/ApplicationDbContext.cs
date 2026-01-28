@@ -18,6 +18,8 @@ namespace PikApi.Data
         public DbSet<Tournament> Tournaments { get; set; }
         public DbSet<TournamentParticipant> TournamentParticipants { get; set; }
         public DbSet<Match> Matches { get; set; }
+        public DbSet<MatchRequest> MatchRequests { get; set; }
+        public DbSet<MatchRequestParticipant> MatchRequestParticipants { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -98,6 +100,34 @@ namespace PikApi.Data
                 entity.HasOne(e => e.Team2)
                     .WithMany()
                     .HasForeignKey(e => e.Team2_MemberId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure MatchRequest
+            modelBuilder.Entity<MatchRequest>(entity =>
+            {
+                entity.HasOne(e => e.Creator)
+                    .WithMany()
+                    .HasForeignKey(e => e.CreatorMemberId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Court)
+                    .WithMany()
+                    .HasForeignKey(e => e.CourtId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure MatchRequestParticipant
+            modelBuilder.Entity<MatchRequestParticipant>(entity =>
+            {
+                entity.HasOne(e => e.MatchRequest)
+                    .WithMany(m => m.Participants)
+                    .HasForeignKey(e => e.MatchRequestId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.Member)
+                    .WithMany()
+                    .HasForeignKey(e => e.MemberId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
         }

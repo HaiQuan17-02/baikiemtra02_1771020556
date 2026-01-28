@@ -47,10 +47,26 @@ class _ApproveDepositScreenState extends State<ApproveDepositScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Phê duyệt nạp tiền')),
-      body: wallet.isLoading
+      body: wallet.isLoading && wallet.pendingTransactions.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : wallet.pendingTransactions.isEmpty
-              ? const Center(child: Text('Không có yêu cầu nào đang chờ'))
+          : wallet.error != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+                      const SizedBox(height: 16),
+                      Text(wallet.error!),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => wallet.loadPendingTransactions(),
+                        child: const Text('Thử lại'),
+                      ),
+                    ],
+                  ),
+                )
+              : wallet.pendingTransactions.isEmpty
+                  ? const Center(child: Text('Không có yêu cầu nào đang chờ'))
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: wallet.pendingTransactions.length,
@@ -62,7 +78,23 @@ class _ApproveDepositScreenState extends State<ApproveDepositScreen> {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Số tiền: ${currencyFormat.format(t.amount)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                            Text('Số tiền: ${currencyFormat.format(t.amount)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 16)),
+                            if (t.description != null && t.description!.contains('Mã:')) 
+                              Container(
+                                margin: const EdgeInsets.symmetric(vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.blue.shade200),
+                                ),
+                                child: Text(
+                                  t.description!,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                                ),
+                              )
+                            else
+                              Text('Nội dung: ${t.description ?? "N/A"}'),
                             Text('Ngày: ${DateFormat('dd/MM HH:mm').format(t.createdDate)}'),
                           ],
                         ),

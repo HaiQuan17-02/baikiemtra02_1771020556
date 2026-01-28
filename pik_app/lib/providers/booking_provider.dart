@@ -6,16 +6,49 @@ class BookingProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
   
   List<Court> _courts = [];
+  List<Court> _adminCourts = [];
   List<CourtCalendar> _calendar = [];
   List<Booking> _myBookings = [];
   bool _isLoading = false;
   String? _error;
 
   List<Court> get courts => _courts;
+  List<Court> get adminCourts => _adminCourts;
   List<CourtCalendar> get calendar => _calendar;
   List<Booking> get myBookings => _myBookings;
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  Future<void> loadAdminCourts() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.getAdminCourts();
+      _adminCourts = (response.data as List)
+          .map((e) => Court.fromJson(e))
+          .toList();
+      _error = null;
+    } catch (e) {
+      _error = 'Lỗi tải danh sách sân quản lý';
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<bool> toggleCourtStatus(int courtId) async {
+    try {
+      await _apiService.toggleCourtStatus(courtId);
+      // Refresh admin list
+      await loadAdminCourts();
+      return true;
+    } catch (e) {
+      _error = 'Lỗi cập nhật trạng thái sân';
+      return false;
+    }
+  }
 
   Future<void> loadCourts() async {
     _isLoading = true;

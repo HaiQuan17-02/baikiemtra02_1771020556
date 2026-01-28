@@ -8,12 +8,14 @@ class WalletProvider extends ChangeNotifier {
   WalletBalance? _balance;
   List<WalletTransaction> _transactions = [];
   List<WalletTransaction> _pendingTransactions = [];
+  AdminStats? _adminStats;
   bool _isLoading = false;
   String? _error;
 
   WalletBalance? get balance => _balance;
   List<WalletTransaction> get transactions => _transactions;
   List<WalletTransaction> get pendingTransactions => _pendingTransactions;
+  AdminStats? get adminStats => _adminStats;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -25,6 +27,27 @@ class WalletProvider extends ChangeNotifier {
     if (b >= 1000000) return 'Gold';
     if (b >= 500000) return 'Silver';
     return 'Bronze';
+  }
+
+  Future<void> loadAdminStats() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final stats = await _apiService.getAdminStats();
+      if (stats != null) {
+        _adminStats = stats;
+        _error = null;
+      } else {
+        _error = 'Không thể tải dữ liệu thống kê';
+      }
+    } catch (e) {
+      _error = 'Lỗi kết nối máy chủ';
+    }
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<void> loadBalance() async {
@@ -55,13 +78,13 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> deposit(double amount, String imageBase64) async {
+  Future<bool> deposit(double amount, String imageBase64, {String? description}) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      await _apiService.deposit(amount, imageBase64);
+      await _apiService.deposit(amount, imageBase64, description: description);
       _isLoading = false;
       notifyListeners();
       return true;

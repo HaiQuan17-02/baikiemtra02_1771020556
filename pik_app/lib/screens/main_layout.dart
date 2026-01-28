@@ -8,6 +8,7 @@ import 'booking/booking_screen.dart';
 import 'tournament/tournament_list_screen.dart';
 import 'admin/approve_deposit_screen.dart';
 import 'admin/stats_screen.dart';
+import 'admin/court_management_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -132,6 +133,14 @@ class _MainLayoutState extends State<MainLayout> {
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const StatsScreen()));
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.sports_tennis, color: AppTheme.gold),
+                title: Text('Quản lý sân', style: TextStyle(color: AppTheme.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CourtManagementScreen()));
                 },
               ),
             ],

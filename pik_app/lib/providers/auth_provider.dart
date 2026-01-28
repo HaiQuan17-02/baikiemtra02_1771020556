@@ -113,6 +113,7 @@ class AuthProvider extends ChangeNotifier {
         fullName: _user!.fullName,
         memberId: _user!.memberId,
         walletBalance: newBalance,
+        rankLevel: _user!.rankLevel,
         tier: _user!.tier,
         roles: _user!.roles,
       );

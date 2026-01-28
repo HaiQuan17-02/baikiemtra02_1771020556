@@ -43,6 +43,7 @@ namespace PikApi.DTOs
         public string FullName { get; set; } = string.Empty;
         public int? MemberId { get; set; }
         public decimal WalletBalance { get; set; }
+        public double RankLevel { get; set; }
         public string Tier { get; set; } = string.Empty;
         public List<string> Roles { get; set; } = new();
     }
