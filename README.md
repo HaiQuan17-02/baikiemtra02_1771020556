@@ -59,7 +59,6 @@ flutter run
 ## Tài khoản test
 
 - **Admin**: admin@pcm.com / Admin@123
-- **Treasurer**: cash@pcm.com / Admin@123
 
 ## Sinh viên
 
